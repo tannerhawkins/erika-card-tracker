@@ -15,6 +15,11 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Secrets for the Google Sheets bridge live on this environment.
+    # Create it under Settings → Environments → "production" and add the
+    # environment secrets VITE_SHEETS_API_URL (and optionally
+    # VITE_SHEETS_API_TOKEN). See SETUP.md.
+    environment: production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,7 +27,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SHEETS_API_URL: ${{ secrets.VITE_SHEETS_API_URL }}
+          VITE_SHEETS_API_TOKEN: ${{ secrets.VITE_SHEETS_API_TOKEN }}
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:

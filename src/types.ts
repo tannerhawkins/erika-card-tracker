@@ -3,8 +3,10 @@ export interface CardLink {
   url: string;
 }
 
-export type CardCategory = 'Pokémon' | 'Trainer';
-export type CardLanguage = 'EN' | 'JP';
+// Values come from a free-form Google Sheet, so keep these widened to string
+// rather than a strict union — the sheet may hold values we haven't enumerated.
+export type CardCategory = string;
+export type CardLanguage = string;
 
 export interface ErikaCard {
   id: string;
@@ -12,10 +14,12 @@ export interface ErikaCard {
   set: string;
   number: string;
   rarity: string;
-  year: number;
+  year: number | null;
   category: CardCategory;
   language: CardLanguage;
   notes?: string;
   image?: string;
   links: CardLink[];
+  /** Whether this card is in the collection (from the sheet's `owned` column). */
+  owned: boolean;
 }
