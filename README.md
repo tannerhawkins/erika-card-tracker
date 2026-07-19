@@ -7,7 +7,7 @@ every English release plus the Japanese exclusives.
 
 ## What's tracked
 
-57 cards across:
+58 cards across:
 
 | Set | Year | Cards |
 |---|---|---|
@@ -16,7 +16,7 @@ every English release plus the Japanese exclusives.
 | Team Up | 2019 | 2 (Erika's Hospitality + Full Art) |
 | Cosmic Eclipse | 2019 | 4 (Erika supporter + the Vileplume-GX trio that pictures Erika) |
 | Scarlet & Violet — 151 | 2023 | 3 (Erika's Invitation: regular, Full Art, Special Illustration Rare) |
-| Ascended Heroes | 2026 | 8 (Erika's Oddish→Victreebel line, Vileplume ex, + Tangela IR) |
+| Ascended Heroes | 2026 | 9 (Erika's Oddish→Victreebel line, Vileplume ex, Tangela IR, + Cosmos Holo promo) |
 | Pokémon VS (Japan) | 2001 | 2 (Erika's Bellossom, Erika's Jumpluff) |
 | Dream League (Japan) | 2019 | 3 (Erika's Vileplume-GX: RR, Character SR, Hyper Rare) |
 | Tag All Stars (Japan) | 2019 | 1 (Erika's Hospitality SR) |

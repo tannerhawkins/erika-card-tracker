@@ -57,13 +57,15 @@ function parseCsv(text) {
 
 const rows = parseCsv(fs.readFileSync(CSV, 'utf8')).filter((r) => r.length > 1);
 const header = rows[0];
-// Send every column EXCEPT owned — the Apps Script sets owned from its snapshot.
+// Send every column, INCLUDING owned. The Apps Script keeps the sheet's own
+// owned value for cards it already has (your live checkmarks are never lost),
+// and uses this CSV `owned` value only to seed cards that are new to the sheet.
 const cards = rows.slice(1)
   .filter((r) => r[0]) // must have an id
   .map((r) => {
     const card = {};
     header.forEach((h, i) => {
-      if (h !== 'owned') card[h] = r[i] ?? '';
+      card[h] = r[i] ?? '';
     });
     return card;
   });

@@ -149,11 +149,14 @@ function doPost(e) {
 
 /**
  * Bulk-upsert the card list from the repo (called by the deploy workflow).
- * The sheet is rewritten to mirror the incoming cards, but each card's `owned`
- * value is carried over from the existing sheet by `id` — so checking off cards
- * is never lost. New cards arrive unchecked; cards no longer in the repo list
- * are dropped. The `owned` column's checkbox formatting is preserved because
- * only cell contents are rewritten.
+ * The sheet is rewritten to mirror the incoming cards. For each card the `owned`
+ * value is chosen as:
+ *   - the EXISTING sheet value if the card is already in the sheet (so your live
+ *     checkmarks are never lost), otherwise
+ *   - the incoming card's `owned` value (lets the seed CSV pre-mark a starting
+ *     collection when a card is new to the sheet, e.g. first-time population).
+ * Cards no longer in the repo list are dropped. The `owned` column's checkbox
+ * formatting is preserved because only cell contents are rewritten.
  */
 function handleSync_(body) {
   if (!ADMIN_TOKEN || body.token !== ADMIN_TOKEN) {
@@ -193,8 +196,11 @@ function handleSync_(body) {
     if (hasPrev) preserved++;
     else added++;
 
+    // Existing card → keep the sheet's owned value; new card → use payload's.
+    var ownedVal = truthy_(hasPrev ? ownedById[id] : card.owned);
+
     var row = HEADERS.map(function (h) {
-      if (h === 'owned') return truthy_(hasPrev ? ownedById[id] : false);
+      if (h === 'owned') return ownedVal;
       return card[h] == null ? '' : card[h];
     });
     grid.push(row);
