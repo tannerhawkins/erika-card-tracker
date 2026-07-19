@@ -7,7 +7,7 @@ every English release plus the Japanese exclusives.
 
 ## What's tracked
 
-58 cards across:
+57 cards (104 collectible printings) across:
 
 | Set | Year | Cards |
 |---|---|---|
@@ -16,7 +16,7 @@ every English release plus the Japanese exclusives.
 | Team Up | 2019 | 2 (Erika's Hospitality + Full Art) |
 | Cosmic Eclipse | 2019 | 4 (Erika supporter + the Vileplume-GX trio that pictures Erika) |
 | Scarlet & Violet — 151 | 2023 | 3 (Erika's Invitation: regular, Full Art, Special Illustration Rare) |
-| Ascended Heroes | 2026 | 9 (Erika's Oddish→Victreebel line, Vileplume ex, Tangela IR, + Cosmos Holo promo) |
+| Ascended Heroes | 2026 | 8 (Erika's Oddish→Victreebel line, Vileplume ex, Tangela IR) |
 | Pokémon VS (Japan) | 2001 | 2 (Erika's Bellossom, Erika's Jumpluff) |
 | Dream League (Japan) | 2019 | 3 (Erika's Vileplume-GX: RR, Character SR, Hyper Rare) |
 | Tag All Stars (Japan) | 2019 | 1 (Erika's Hospitality SR) |
@@ -24,10 +24,16 @@ every English release plus the Japanese exclusives.
 
 Coverage is every physical card whose name contains "Erika," plus a few art-cameo cards
 that picture Erika without naming her (the Cosmic Eclipse Vileplume-GX prints). Digital
-Pokémon TCG Pocket cards are intentionally excluded. Each card shows its picture, set,
-number, rarity, year, collector notes, and links to TCGPlayer (pricing) and
-Bulbapedia/TCG Collector (details). One checklist entry per unique card (set + number);
-1st Edition / reverse-holo variants are noted in the card details.
+Pokémon TCG Pocket cards are intentionally excluded.
+
+**Printings/variants.** Each card is one tile, but lists its distinct printings with a
+separate "owned" checkbox for each: WOTC cards (Gym Heroes/Challenge) have *1st Edition* +
+*Unlimited*; modern base cards have *Normal* + *Reverse Holo* (Ascended Heroes base cards
+also carry the two Scarlet & Violet reverse patterns, *Energy Symbol* + *Poké Ball*, and
+Erika's Tangela adds its *Cosmos Holo* promo). Secret rares, full arts, illustration/
+special-illustration rares, ex/GX rainbow, and promos have a single printing. That's
+104 printings across the 57 cards. Each card shows its picture, set, number, rarity, year,
+collector notes, and links to TCGPlayer (pricing) and Bulbapedia/TCG Collector (details).
 
 ## How data is stored — Google Sheets
 
@@ -37,8 +43,12 @@ collection is editable from the sheet and synced across all your devices.
 - A small **Google Apps Script Web App** (deployed from your own Google account) is the
   bridge. It runs as you and is the only thing that touches the sheet, so **no Google
   credentials ever reach the browser**.
-- The site fetches cards live from the sheet on load, and ticking a card writes
-  `TRUE`/`FALSE` straight back to the sheet's `owned` column.
+- The sheet has **one row per printing**: the `variant` column labels it (e.g. "1st
+  Edition", "Reverse Holo (Poké Ball)"; blank for single-printing cards), and rows that
+  share the same set + number + name are grouped into one tile on the site. Add a printing
+  by adding a row with the same set/number/name and a new `variant` + `id`.
+- The site fetches cards live from the sheet on load, and ticking a printing writes
+  `TRUE`/`FALSE` straight back to that row's `owned` column.
 - A localStorage cache gives instant paint and keeps the last-known list visible if the
   sheet is briefly unreachable.
 - Every deploy runs a `sync-sheet` job that upserts the repo's card list

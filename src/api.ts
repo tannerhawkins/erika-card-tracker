@@ -46,6 +46,7 @@ function normalizeCard(raw: unknown): ErikaCard | null {
     name: String(r.name ?? ''),
     set: String(r.set ?? ''),
     number: String(r.number ?? ''),
+    variant: r.variant ? String(r.variant) : '',
     rarity: String(r.rarity ?? ''),
     year: Number.isFinite(yearNum) && r.year !== '' && r.year != null ? yearNum : null,
     category: String(r.category ?? ''),

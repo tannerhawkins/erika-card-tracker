@@ -13,6 +13,8 @@ export interface ErikaCard {
   name: string;
   set: string;
   number: string;
+  /** Printing/variant label (e.g. "1st Edition", "Reverse Holo"). Empty = single printing. */
+  variant: string;
   rarity: string;
   year: number | null;
   category: CardCategory;

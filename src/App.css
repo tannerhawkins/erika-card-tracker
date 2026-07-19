@@ -320,26 +320,51 @@
   text-decoration: underline;
 }
 
-.own-toggle {
+.variants {
   margin-top: auto;
   padding-top: 8px;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.variants-title {
+  margin: 0 0 2px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.variants-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.variant-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.92rem;
+  padding: 3px 0;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  border-top: 1px solid var(--hairline);
 }
 
-.own-toggle input {
+.variant-row input {
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
   accent-color: var(--accent);
   cursor: pointer;
 }
 
-.card-tile.owned .own-toggle span {
+.variant-row.owned span {
   color: var(--accent);
 }
 

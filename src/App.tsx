@@ -7,6 +7,33 @@ import { useCollection } from './useCollection';
 type OwnershipFilter = 'all' | 'owned' | 'missing';
 type LanguageFilter = 'all' | 'EN' | 'JP';
 
+/** One tile = one card; its variant rows share set + number + name. */
+interface CardGroup {
+  key: string;
+  base: ErikaCard;
+  variants: ErikaCard[];
+}
+
+/** Group variant rows (same set + number + name) into one card, preserving order. */
+function buildGroups(cards: ErikaCard[]): CardGroup[] {
+  const groups: CardGroup[] = [];
+  const byKey = new Map<string, CardGroup>();
+  for (const card of cards) {
+    const key = `${card.set}|||${card.number}|||${card.name}`;
+    let group = byKey.get(key);
+    if (!group) {
+      group = { key, base: card, variants: [] };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.variants.push(card);
+  }
+  return groups;
+}
+
+const groupOwned = (g: CardGroup, owned: Set<string>) =>
+  g.variants.some((v) => owned.has(v.id));
+
 function CardImage({ card }: { card: ErikaCard }) {
   const [failed, setFailed] = useState(false);
 
@@ -31,55 +58,82 @@ function CardImage({ card }: { card: ErikaCard }) {
 }
 
 function CardTile({
-  card,
-  isOwned,
+  group,
+  owned,
   onToggle,
 }: {
-  card: ErikaCard;
-  isOwned: boolean;
+  group: CardGroup;
+  owned: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const checkboxId = `own-${card.id}`;
-  const meta = [card.set, `#${card.number}`, card.rarity, card.year ?? undefined]
+  const { base, variants } = group;
+  const isOwned = groupOwned(group, owned);
+  const single = variants.length === 1 && !variants[0].variant;
+  const ownedCount = variants.filter((v) => owned.has(v.id)).length;
+  const meta = [base.set, `#${base.number}`, base.rarity, base.year ?? undefined]
     .filter(Boolean)
     .join(' · ');
+
   return (
     <article className={`card-tile${isOwned ? ' owned' : ''}`}>
-      <CardImage card={card} />
+      <CardImage card={base} />
       <div className="card-body">
-        <h3 className="card-name">{card.name}</h3>
+        <h3 className="card-name">{base.name}</h3>
         <p className="card-meta">{meta}</p>
         <p className="card-badges">
-          {card.category && <span className="badge">{card.category}</span>}
-          {card.language === 'JP' && <span className="badge badge-jp">Japanese exclusive</span>}
+          {base.category && <span className="badge">{base.category}</span>}
+          {base.language === 'JP' && <span className="badge badge-jp">Japanese exclusive</span>}
         </p>
-        {card.notes && <p className="card-notes">{card.notes}</p>}
-        {card.links.length > 0 && (
+        {base.notes && <p className="card-notes">{base.notes}</p>}
+        {base.links.length > 0 && (
           <p className="card-links">
-            {card.links.map((link) => (
+            {base.links.map((link) => (
               <a key={link.url} href={link.url} target="_blank" rel="noreferrer noopener">
                 {link.label} ↗
               </a>
             ))}
           </p>
         )}
-        <label className="own-toggle" htmlFor={checkboxId}>
-          <input
-            id={checkboxId}
-            type="checkbox"
-            checked={isOwned}
-            onChange={() => onToggle(card.id)}
-          />
-          <span>{isOwned ? 'In my collection' : 'I have this card'}</span>
-        </label>
+
+        <div className="variants">
+          {!single && (
+            <p className="variants-title">
+              Printings <span className="variants-count">{ownedCount}/{variants.length}</span>
+            </p>
+          )}
+          {variants.map((v) => {
+            const vOwned = owned.has(v.id);
+            const cbId = `own-${v.id}`;
+            const label = single
+              ? vOwned
+                ? 'In my collection'
+                : 'I have this card'
+              : v.variant || 'Standard';
+            return (
+              <label
+                key={v.id}
+                className={`variant-row${vOwned ? ' owned' : ''}`}
+                htmlFor={cbId}
+              >
+                <input
+                  id={cbId}
+                  type="checkbox"
+                  checked={vOwned}
+                  onChange={() => onToggle(v.id)}
+                />
+                <span>{label}</span>
+              </label>
+            );
+          })}
+        </div>
       </div>
     </article>
   );
 }
 
 /** SET_ORDER first, then any sets present in the sheet but not listed, first-seen. */
-function orderedSets(cards: ErikaCard[]): string[] {
-  const seen = cards.map((c) => c.set);
+function orderedSets(groups: CardGroup[]): string[] {
+  const seen = groups.map((g) => g.base.set);
   const known = SET_ORDER.filter((s) => seen.includes(s));
   const extras = [...new Set(seen.filter((s) => s && !SET_ORDER.includes(s as never)))];
   return [...known, ...extras];
@@ -91,34 +145,40 @@ export default function App() {
   const [ownership, setOwnership] = useState<OwnershipFilter>('all');
   const [language, setLanguage] = useState<LanguageFilter>('all');
 
+  const groups = useMemo(() => buildGroups(cards), [cards]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return cards.filter((card) => {
-      if (q && !`${card.name} ${card.set} ${card.number}`.toLowerCase().includes(q)) return false;
-      if (ownership === 'owned' && !owned.has(card.id)) return false;
-      if (ownership === 'missing' && owned.has(card.id)) return false;
-      if (language !== 'all' && card.language !== language) return false;
+    return groups.filter((g) => {
+      const b = g.base;
+      if (q && !`${b.name} ${b.set} ${b.number}`.toLowerCase().includes(q)) return false;
+      const isOwned = groupOwned(g, owned);
+      if (ownership === 'owned' && !isOwned) return false;
+      if (ownership === 'missing' && isOwned) return false;
+      if (language !== 'all' && b.language !== language) return false;
       return true;
     });
-  }, [cards, query, ownership, language, owned]);
+  }, [groups, query, ownership, language, owned]);
 
   const sections = useMemo(() => {
-    const order = orderedSets(cards);
+    const order = orderedSets(groups);
     return order
       .map((set) => ({
         set,
-        cards: filtered.filter((c) => c.set === set),
-        total: cards.filter((c) => c.set === set).length,
-        ownedCount: cards.filter((c) => c.set === set && owned.has(c.id)).length,
+        groups: filtered.filter((g) => g.base.set === set),
+        total: groups.filter((g) => g.base.set === set).length,
+        ownedCount: groups.filter((g) => g.base.set === set && groupOwned(g, owned)).length,
       }))
-      .filter((s) => s.cards.length > 0);
-  }, [cards, filtered, owned]);
+      .filter((s) => s.groups.length > 0);
+  }, [groups, filtered, owned]);
 
-  const ownedTotal = owned.size;
-  const total = cards.length;
-  const pct = total === 0 ? 0 : Math.round((ownedTotal / total) * 100);
-  const jpTotal = cards.filter((c) => c.language === 'JP').length;
-  const jpOwned = cards.filter((c) => c.language === 'JP' && owned.has(c.id)).length;
+  const totalCards = groups.length;
+  const ownedCards = groups.filter((g) => groupOwned(g, owned)).length;
+  const pct = totalCards === 0 ? 0 : Math.round((ownedCards / totalCards) * 100);
+  const totalPrintings = cards.length;
+  const ownedPrintings = owned.size;
+  const jpTotal = groups.filter((g) => g.base.language === 'JP').length;
+  const jpOwned = groups.filter((g) => g.base.language === 'JP' && groupOwned(g, owned)).length;
 
   const showControls = cards.length > 0;
 
@@ -137,7 +197,7 @@ export default function App() {
         <div className="progress-block">
           <div className="progress-stats">
             <span className="progress-count">
-              {ownedTotal} <span className="progress-of">of {total} cards</span>
+              {ownedCards} <span className="progress-of">of {totalCards} cards</span>
             </span>
             <span className="progress-pct">{pct}%</span>
           </div>
@@ -145,14 +205,15 @@ export default function App() {
             className="progress-track"
             role="progressbar"
             aria-valuemin={0}
-            aria-valuemax={total}
-            aria-valuenow={ownedTotal}
+            aria-valuemax={totalCards}
+            aria-valuenow={ownedCards}
             aria-label="Collection progress"
           >
             <div className="progress-fill" style={{ width: `${pct}%` }} />
           </div>
           <p className="progress-detail">
-            {jpOwned} of {jpTotal} Japanese exclusives collected · synced with Google Sheets
+            {ownedPrintings} of {totalPrintings} printings collected · {jpOwned} of {jpTotal}{' '}
+            Japanese exclusives · synced with Google Sheets
           </p>
         </div>
       </header>
@@ -256,13 +317,8 @@ export default function App() {
               </span>
             </h2>
             <div className="card-grid">
-              {section.cards.map((card) => (
-                <CardTile
-                  key={card.id}
-                  card={card}
-                  isOwned={owned.has(card.id)}
-                  onToggle={toggle}
-                />
+              {section.groups.map((group) => (
+                <CardTile key={group.key} group={group} owned={owned} onToggle={toggle} />
               ))}
             </div>
           </section>
@@ -271,9 +327,9 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          Cards and owned status are stored in a Google Sheet and synced across your devices.
-          Checking a card saves straight to the sheet. Card images © The Pokémon Company — served
-          from public card databases.
+          Cards and owned status are stored in a Google Sheet and synced across your devices. Each
+          card lists its printings — check the ones you own and it saves straight to the sheet. Card
+          images © The Pokémon Company — served from public card databases.
         </p>
       </footer>
     </div>

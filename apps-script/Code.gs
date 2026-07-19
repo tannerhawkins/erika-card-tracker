@@ -8,7 +8,9 @@
  * ── One-time setup (see SETUP.md for screenshots-level detail) ───────────────
  *  1. Create a Google Sheet. Rename the first tab to exactly:  Cards
  *  2. File → Import → Upload  sheet-seed/cards.csv  → "Replace current sheet".
- *     (Header row + 43 cards. The `owned` column is TRUE/FALSE.)
+ *     (Header row + one row per printing. The `variant` column labels each
+ *     printing; rows sharing set+number+name group into one card on the site.
+ *     The `owned` column is TRUE/FALSE per printing.)
  *  3. Extensions → Apps Script. Delete the sample, paste THIS file, Save.
  *  4. Deploy → New deployment → type "Web app":
  *        - Execute as:            Me
@@ -36,7 +38,7 @@ var SHARED_TOKEN = ''; // '' = open. Must match VITE_SHEETS_API_TOKEN if set.
 var ADMIN_TOKEN = ''; // Strong secret for the deploy sync. Must match SHEETS_SYNC_TOKEN.
 
 var HEADERS = [
-  'id', 'name', 'set', 'number', 'rarity', 'year', 'category', 'language',
+  'id', 'name', 'set', 'number', 'variant', 'rarity', 'year', 'category', 'language',
   'notes', 'image', 'link1_label', 'link1_url', 'link2_label', 'link2_url', 'owned',
 ];
 
@@ -73,6 +75,7 @@ function rowToCard_(headerIndex, row) {
     name: String(cell('name')),
     set: String(cell('set')),
     number: String(cell('number')),
+    variant: cell('variant') ? String(cell('variant')) : '',
     rarity: String(cell('rarity')),
     year: isNaN(yearNum) ? null : yearNum,
     category: String(cell('category')),
