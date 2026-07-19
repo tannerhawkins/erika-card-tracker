@@ -11,7 +11,9 @@ export const SET_ORDER = [
   'Team Up',
   'Cosmic Eclipse',
   'Scarlet & Violet — 151',
+  'Ascended Heroes',
   'Pokémon VS (Japan)',
+  'Dream League (Japan)',
   'Tag All Stars (Japan)',
   'Japanese Promos',
 ] as const;

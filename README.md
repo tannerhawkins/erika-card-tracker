@@ -7,22 +7,27 @@ every English release plus the Japanese exclusives.
 
 ## What's tracked
 
-43 unique cards across:
+57 cards across:
 
 | Set | Year | Cards |
 |---|---|---|
 | Gym Heroes | 2000 | 22 (incl. Erika, Erika's Maids, Erika's Perfume, Celadon City Gym) |
 | Gym Challenge | 2000 | 9 (incl. Erika's Venusaur, Erika's Kindness) |
 | Team Up | 2019 | 2 (Erika's Hospitality + Full Art) |
-| Cosmic Eclipse | 2019 | 1 (Erika supporter) |
+| Cosmic Eclipse | 2019 | 4 (Erika supporter + the Vileplume-GX trio that pictures Erika) |
 | Scarlet & Violet — 151 | 2023 | 3 (Erika's Invitation: regular, Full Art, Special Illustration Rare) |
+| Ascended Heroes | 2026 | 8 (Erika's Oddish→Victreebel line, Vileplume ex, + Tangela IR) |
 | Pokémon VS (Japan) | 2001 | 2 (Erika's Bellossom, Erika's Jumpluff) |
+| Dream League (Japan) | 2019 | 3 (Erika's Vileplume-GX: RR, Character SR, Hyper Rare) |
 | Tag All Stars (Japan) | 2019 | 1 (Erika's Hospitality SR) |
 | Japanese Promos | 1999–2019 | 3 (CoroCoro Erika's Bulbasaur, SM-P 324 & 362) |
 
-Each card shows its picture, set, number, rarity, year, collector notes, and links to
-TCGPlayer (pricing) and Bulbapedia/TCG Collector (details). One checklist entry per
-unique card (set + number); 1st Edition / holo variants are noted in the card details.
+Coverage is every physical card whose name contains "Erika," plus a few art-cameo cards
+that picture Erika without naming her (the Cosmic Eclipse Vileplume-GX prints). Digital
+Pokémon TCG Pocket cards are intentionally excluded. Each card shows its picture, set,
+number, rarity, year, collector notes, and links to TCGPlayer (pricing) and
+Bulbapedia/TCG Collector (details). One checklist entry per unique card (set + number);
+1st Edition / reverse-holo variants are noted in the card details.
 
 ## How data is stored — Google Sheets
 
