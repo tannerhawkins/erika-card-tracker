@@ -41,10 +41,16 @@ collection is editable from the sheet and synced across all your devices.
   `TRUE`/`FALSE` straight back to the sheet's `owned` column.
 - A localStorage cache gives instant paint and keeps the last-known list visible if the
   sheet is briefly unreachable.
+- Every deploy runs a `sync-sheet` job that upserts the repo's card list
+  ([`sheet-seed/cards.csv`](sheet-seed/cards.csv)) into your sheet — adding newly
+  discovered cards and refreshing details — while **preserving the `owned` status of
+  cards you already have** (matched by id). So new cards appear automatically and your
+  progress is never lost. It's gated by an admin token and skips itself until configured.
 
 **One-time connection steps are in [`SETUP.md`](SETUP.md).** Until it's connected, the
-site shows a "connect your sheet" screen. The current 43 cards are provided as
-[`sheet-seed/cards.csv`](sheet-seed/cards.csv) to import into the sheet.
+site shows a "connect your sheet" screen. The full card list is provided as
+[`sheet-seed/cards.csv`](sheet-seed/cards.csv) for the initial import (after that, the
+deploy sync keeps it up to date).
 
 ### Secrets
 

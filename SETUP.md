@@ -59,12 +59,37 @@ You'll do this once. ~10 minutes.
 4. *(Optional)* If you set a `SHARED_TOKEN` in `Code.gs` to gate writes, also add
    **`VITE_SHEETS_API_TOKEN`** with the same value. Leave it out for open access.
 
-## 5. Redeploy the site
+## 5. (Recommended) Turn on automatic card sync
+
+This makes every deploy push the repo's card list into your sheet — adding newly
+discovered cards and refreshing card details — **without touching the `owned`
+status of cards you already have**. So you never re-import the CSV by hand.
+
+1. Pick a strong random string as your admin token (e.g. from a password
+   manager).
+2. In the Apps Script editor, set `ADMIN_TOKEN` near the top of `Code.gs` to that
+   string, **Save**, then **Deploy → Manage deployments → Edit → Version: New
+   version → Deploy** (redeploys the same URL).
+3. In GitHub → the **`production`** environment, add an environment secret:
+   - Name: **`SHEETS_SYNC_TOKEN`**
+   - Value: the same admin token.
+
+`SHEETS_SYNC_TOKEN` is a **real secret** — it only ever runs inside GitHub
+Actions and is never shipped to the browser (no `VITE_` prefix). Leave
+`ADMIN_TOKEN` blank / the secret unset to keep auto-sync off; the deploy's
+sync step then skips itself cleanly.
+
+## 6. Redeploy the site
 
 - **repo → Actions → "Deploy to GitHub Pages" → Run workflow** (or just push any
-  commit to `main`). The build injects your secret and ships the connected app.
+  commit to `main`). The build injects your secret and ships the connected app,
+  and the `sync-sheet` job upserts the card list into your sheet.
 - Visit <https://tannerhawkins.github.io/erika-card-tracker/>. Cards load from the
   sheet, and ticking a card writes `TRUE`/`FALSE` back to the `owned` column.
+
+> First-time note: if you already imported an older `cards.csv` by hand, the first
+> synced deploy will add the newer cards and keep your existing checkmarks. If you
+> never imported, the sync populates the sheet from scratch (all unchecked).
 
 ---
 
@@ -83,8 +108,11 @@ npm run dev
 |---|---|---|
 | Apps Script Web App URL | `.env.example` → `REPLACE_WITH_DEPLOYMENT_ID` | GitHub environment secret `VITE_SHEETS_API_URL` (and `.env` locally) |
 | Optional write token | `.env.example` → blank | GitHub environment secret `VITE_SHEETS_API_TOKEN` + `SHARED_TOKEN` in `Code.gs` |
+| Deploy-sync admin token | `Code.gs` → `ADMIN_TOKEN = ''` | GitHub environment secret `SHEETS_SYNC_TOKEN` + `ADMIN_TOKEN` in `Code.gs` |
 
-**No sensitive keys are committed.** The Web App URL is the only value the site needs,
-and it is injected at build time from the environment secret. Because this is a static
-site, that URL is visible in the shipped page — that's by design; the Apps Script only
-allows reading cards and toggling a card's owned flag.
+**No sensitive keys are committed.** The Web App URL and the two tokens all live in
+GitHub secrets / your own Apps Script, never in the repo. The Web App URL is injected at
+build time and — because this is a static site — is visible in the shipped page by
+design; the Apps Script only exposes reading cards, toggling one owned flag, and (gated
+by the admin token) the deploy sync. The `SHEETS_SYNC_TOKEN` is the one genuinely secret
+value, and it stays inside GitHub Actions — it is never bundled into the site.

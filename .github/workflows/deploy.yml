@@ -38,3 +38,19 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           force_orphan: true
+
+  # Push the repo's card list into the Google Sheet, preserving owned status.
+  # Skips itself automatically until SHEETS_SYNC_TOKEN is configured. See SETUP.md.
+  sync-sheet:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sync cards to Google Sheet
+        env:
+          SHEETS_API_URL: ${{ secrets.VITE_SHEETS_API_URL }}
+          SHEETS_SYNC_TOKEN: ${{ secrets.SHEETS_SYNC_TOKEN }}
+        run: node scripts/sync-sheet.mjs

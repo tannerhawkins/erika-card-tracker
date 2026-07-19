@@ -21,10 +21,19 @@
  *  GitHub secret VITE_SHEETS_API_TOKEN. Leave both blank for open access.
  *  (Note: on a static site the token ships in the page, so it only deters
  *  casual visitors — it is not strong security.)
+ *
+ * ── Deploy-time card sync (ADMIN_TOKEN) ─────────────────────────────────────
+ *  The GitHub Actions deploy posts the repo's card list here to keep the sheet
+ *  in sync (add new cards, refresh card details) WITHOUT touching the `owned`
+ *  column of cards you already have. This is gated by ADMIN_TOKEN — a REAL
+ *  secret that only lives in CI (never shipped to the browser). Set it below to
+ *  a strong random string and store the same value in the GitHub environment
+ *  secret SHEETS_SYNC_TOKEN. Leave it blank to disable the sync endpoint.
  */
 
 var SHEET_NAME = 'Cards';
 var SHARED_TOKEN = ''; // '' = open. Must match VITE_SHEETS_API_TOKEN if set.
+var ADMIN_TOKEN = ''; // Strong secret for the deploy sync. Must match SHEETS_SYNC_TOKEN.
 
 var HEADERS = [
   'id', 'name', 'set', 'number', 'rarity', 'year', 'category', 'language',
@@ -98,7 +107,11 @@ function doGet() {
   return json_({ cards: cards });
 }
 
-/** POST { id, owned, token? } → { ok, id, owned } — flips the owned cell. */
+/**
+ * POST handler. Two shapes:
+ *   { id, owned, token? }            → flip one card's owned cell.
+ *   { action: 'sync', token, cards } → bulk-upsert the card list (deploy sync).
+ */
 function doPost(e) {
   var body = {};
   try {
@@ -106,6 +119,8 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: 'bad_json' });
   }
+
+  if (body.action === 'sync') return handleSync_(body);
 
   if (SHARED_TOKEN && body.token !== SHARED_TOKEN) {
     return json_({ ok: false, error: 'unauthorized' });
@@ -130,4 +145,64 @@ function doPost(e) {
     }
   }
   return json_({ ok: false, error: 'id_not_found', id: body.id });
+}
+
+/**
+ * Bulk-upsert the card list from the repo (called by the deploy workflow).
+ * The sheet is rewritten to mirror the incoming cards, but each card's `owned`
+ * value is carried over from the existing sheet by `id` — so checking off cards
+ * is never lost. New cards arrive unchecked; cards no longer in the repo list
+ * are dropped. The `owned` column's checkbox formatting is preserved because
+ * only cell contents are rewritten.
+ */
+function handleSync_(body) {
+  if (!ADMIN_TOKEN || body.token !== ADMIN_TOKEN) {
+    return json_({ ok: false, error: 'unauthorized' });
+  }
+  var cards = body.cards;
+  if (!Array.isArray(cards) || cards.length === 0) {
+    // Refuse to wipe the sheet on an empty/malformed payload.
+    return json_({ ok: false, error: 'no_cards' });
+  }
+
+  var sheet = getSheet_();
+
+  // Snapshot existing owned status by id.
+  var ownedById = {};
+  var existing = sheet.getDataRange().getValues();
+  if (existing.length > 1) {
+    var eIdx = headerIndex_(existing[0]);
+    if (eIdx['id'] !== undefined && eIdx['owned'] !== undefined) {
+      for (var r = 1; r < existing.length; r++) {
+        var eid = existing[r][eIdx['id']];
+        if (eid !== '' && eid !== null && eid !== undefined) {
+          ownedById[String(eid)] = existing[r][eIdx['owned']];
+        }
+      }
+    }
+  }
+
+  // Build the new grid: header + one row per incoming card.
+  var added = 0;
+  var preserved = 0;
+  var grid = [HEADERS.slice()];
+  for (var c = 0; c < cards.length; c++) {
+    var card = cards[c] || {};
+    var id = String(card.id == null ? '' : card.id);
+    var hasPrev = Object.prototype.hasOwnProperty.call(ownedById, id);
+    if (hasPrev) preserved++;
+    else added++;
+
+    var row = HEADERS.map(function (h) {
+      if (h === 'owned') return truthy_(hasPrev ? ownedById[id] : false);
+      return card[h] == null ? '' : card[h];
+    });
+    grid.push(row);
+  }
+
+  // Rewrite the sheet. clearContents keeps column formatting (checkboxes).
+  sheet.clearContents();
+  sheet.getRange(1, 1, grid.length, HEADERS.length).setValues(grid);
+
+  return json_({ ok: true, total: cards.length, added: added, preserved: preserved });
 }
