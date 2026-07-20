@@ -2,8 +2,8 @@ name: Sync card prices
 
 on:
   schedule:
-    # 13:24 UTC daily — an off-the-hour time to avoid GitHub's cron congestion.
-    - cron: '24 13 * * *'
+    # 13:24 UTC every Monday — an off-the-hour time to avoid GitHub's cron congestion.
+    - cron: '24 13 * * 1'
   workflow_dispatch:
 
 permissions:

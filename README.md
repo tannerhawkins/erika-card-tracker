@@ -58,7 +58,7 @@ collection is editable from the sheet and synced across all your devices.
   cards you already have** (matched by id). So new cards appear automatically and your
   progress is never lost. It's gated by an admin token and skips itself until configured.
 - A separate scheduled `sync-prices` workflow ([`price-sync.yml`](.github/workflows/price-sync.yml))
-  runs daily (and on demand) to pull market prices from the [JustTCG API](https://justtcg.com)
+  runs weekly (and on demand) to pull market prices from the [JustTCG API](https://justtcg.com)
   into the sheet's `price` / `price_updated_at` columns — one price per printing. Rows
   with a `tcgplayer_id` (in [`sheet-seed/cards.csv`](sheet-seed/cards.csv)) are looked up
   exactly by TCGPlayer product id; everything else is looked up by name, including

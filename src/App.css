@@ -76,6 +76,40 @@
   color: var(--text-muted);
 }
 
+.value-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+  max-width: 560px;
+}
+
+.value-stat {
+  flex: 1 1 200px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.value-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.value-stat-amount {
+  font-size: 1.3rem;
+  font-weight: 650;
+}
+
+.value-stat-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 /* ── Controls ──────────────────────────────────────────────────────── */
 
 .controls {

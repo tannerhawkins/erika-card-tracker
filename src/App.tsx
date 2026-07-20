@@ -206,6 +206,31 @@ export default function App() {
   const jpTotal = groups.filter((g) => g.base.language === 'JP').length;
   const jpOwned = groups.filter((g) => g.base.language === 'JP' && groupOwned(g, owned)).length;
 
+  const collectionValue = useMemo(
+    () => cards.reduce((sum, c) => (owned.has(c.id) && c.price != null ? sum + c.price : sum), 0),
+    [cards, owned],
+  );
+
+  const { costToComplete, missingPriceGroups } = useMemo(() => {
+    let cost = 0;
+    let missing = 0;
+    for (const g of groups) {
+      if (groupOwned(g, owned)) continue;
+      const prices = g.variants
+        .map((v) => v.price)
+        .filter((p): p is number => p != null);
+      if (prices.length === 0) {
+        missing += 1;
+        continue;
+      }
+      cost += Math.min(...prices);
+    }
+    return { costToComplete: cost, missingPriceGroups: missing };
+  }, [groups, owned]);
+
+  const currency = (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
   const showControls = cards.length > 0;
 
   return (
@@ -241,6 +266,23 @@ export default function App() {
             {ownedPrintings} of {totalPrintings} printings collected · {jpOwned} of {jpTotal}{' '}
             Japanese exclusives · synced with Google Sheets
           </p>
+        </div>
+
+        <div className="value-stats">
+          <div className="value-stat">
+            <span className="value-stat-label">Collection value</span>
+            <span className="value-stat-amount">{currency(collectionValue)}</span>
+          </div>
+          <div className="value-stat">
+            <span className="value-stat-label">To complete collection</span>
+            <span className="value-stat-amount">{currency(costToComplete)}</span>
+            {missingPriceGroups > 0 && (
+              <span className="value-stat-note">
+                {missingPriceGroups} missing card{missingPriceGroups === 1 ? '' : 's'} have no
+                price data
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -355,7 +397,7 @@ export default function App() {
         <p>
           Cards and owned status are stored in a Google Sheet and synced across your devices. Each
           card lists its printings — check the ones you own and it saves straight to the sheet.
-          Prices are TCGPlayer market prices, synced nightly where available (not every printing has
+          Prices are TCGPlayer market prices, synced weekly where available (not every printing has
           pricing data). Card images © The Pokémon Company — served from public card databases.
         </p>
       </footer>

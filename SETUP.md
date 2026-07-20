@@ -94,7 +94,7 @@ sync step then skips itself cleanly.
 > synced deploy will add the newer cards and keep your existing checkmarks. If you
 > never imported, the sync populates the sheet from scratch (all unchecked).
 
-## 7. Turn on the nightly price sync
+## 7. Turn on the weekly price sync
 
 A separate scheduled workflow, [`price-sync.yml`](.github/workflows/price-sync.yml),
 fetches market prices from the [JustTCG API](https://justtcg.com) and writes them into
