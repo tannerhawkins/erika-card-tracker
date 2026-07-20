@@ -200,9 +200,15 @@ if (!res.ok) {
 const data = await res.json().catch(() => ({}));
 if (!data.ok) {
   const hints = {
+    // Reached the old single-toggle handler → the deployed Web App predates the updatePrices action.
+    missing_id:
+      'The Web App is running an older Code.gs without the updatePrices action. Re-paste the ' +
+      'current apps-script/Code.gs, then update the EXISTING deployment: Deploy → Manage ' +
+      'deployments → Edit → Version: New version → Deploy (do not create a new deployment).',
     missing_columns:
-      'The sheet is missing the price / price_updated_at columns — re-import sheet-seed/cards.csv ' +
-      'or run the card-list sync first, then redeploy the Apps Script (apps-script/Code.gs).',
+      'The sheet is missing the price / price_updated_at columns — run the card-list sync first ' +
+      '(it adds them automatically), then redeploy the Apps Script (apps-script/Code.gs) if you ' +
+      "haven't already.",
     unauthorized: 'SHEETS_SYNC_TOKEN does not match ADMIN_TOKEN in Code.gs.',
   };
   const hint = hints[data.error];
