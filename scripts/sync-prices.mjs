@@ -11,6 +11,15 @@
  * hasn't indexed yet (e.g. a brand-new set). Those cards keep their existing
  * TCGPlayer/PriceCharting links for manual price lookup.
  *
+ * Accuracy: when a card has multiple printings (e.g. 1st Edition + Unlimited,
+ * or Normal + Reverse Holo), each row requires an EXACT finish match from the
+ * API — it will NOT fall back to a generic/any-available price, since that
+ * would risk applying one printing's price to a sibling printing and making
+ * them look identically priced. Cards with only one printing still accept
+ * any available price, since there's no sibling to misattribute it to. A row
+ * left blank means the API didn't have edition-specific pricing for it, not
+ * that the sync failed — see the "no exact-enough price" count in the logs.
+ *
  * Config (from the GitHub `production` environment, or your local env):
  *   SHEETS_API_URL       the Apps Script Web App URL (…/exec). Same value as
  *                        the VITE_SHEETS_API_URL secret.
@@ -91,29 +100,43 @@ function leadingNumber(number) {
 
 // Finish keys to try, in priority order, per our variant label. The API's
 // tcgplayer.prices object uses keys like "holofoil", "reverseHolofoil",
-// "1stEditionHolofoil" — which finishes exist varies by card, so this always
-// falls further back to "any available finish" rather than failing.
+// "1stEditionHolofoil" — which finishes exist varies by card.
+//
+// "1st Edition" ONLY matches an explicit 1st-edition-tagged key — never a
+// generic "normal"/"holofoil" price, because on WotC-era cards an untagged
+// price is conventionally the Unlimited print's price, not the 1st Edition's
+// (which is almost always worth substantially more). Matching it there would
+// silently mislabel the Unlimited price as the 1st Edition price.
 function finishCandidates(variant) {
   const v = variant.toLowerCase();
   if (v.includes('1st')) return ['1stEditionHolofoil', '1stEditionNormal'];
   if (v.includes('unlimited')) {
-    return ['unlimitedHolofoil', 'holofoil', 'unlimitedNormal', 'normal', 'reverseHolofoil'];
+    return ['unlimitedHolofoil', 'unlimitedNormal', 'holofoil', 'normal'];
   }
   if (v.includes('reverse')) return ['reverseHolofoil'];
-  if (v === 'normal' || v === '') {
-    return ['normal', 'unlimited', '1stEditionNormal', 'holofoil'];
-  }
-  // Unrecognized variant label (e.g. a promo pattern name) — try everything.
+  if (v === 'normal') return ['normal', 'holofoil', 'unlimitedNormal', 'unlimitedHolofoil'];
+  // Blank variant = this card has only one printing — try everything reasonable.
   return ['holofoil', 'reverseHolofoil', 'normal', '1stEditionHolofoil', '1stEditionNormal', 'unlimitedHolofoil', 'unlimitedNormal'];
 }
 
-function pickPrice(prices, variant) {
+/**
+ * @param strict When true, a card has sibling printings (e.g. this row is one
+ *   of a 1st Edition / Unlimited pair) — an exact finish match is required,
+ *   with NO fallback to "any available price". Without this, a card missing
+ *   edition-specific pricing data would have its one available price applied
+ *   to every sibling row, making distinct printings look identically priced
+ *   (the bug this was added to fix). Single-printing cards (strict=false)
+ *   still fall back to any available price, since there's no sibling to
+ *   misattribute it to.
+ */
+function pickPrice(prices, variant, strict) {
   if (!prices || typeof prices !== 'object') return null;
   for (const key of finishCandidates(variant)) {
     const market = prices[key]?.market;
     if (typeof market === 'number' && Number.isFinite(market)) return market;
   }
-  // Last resort: any finish with a usable market price.
+  if (strict) return null;
+  // Last resort, single-printing cards only: any finish with a usable market price.
   for (const key of Object.keys(prices)) {
     const market = prices[key]?.market;
     if (typeof market === 'number' && Number.isFinite(market)) return market;
@@ -130,6 +153,16 @@ function normalizeDate(d) {
 
 const setIds = [...new Set(priceable.map((c) => c.priceSetId))];
 console.log(`sync-prices: fetching ${setIds.length} set(s) for ${priceable.length} priceable printing(s)…`);
+
+// A card "has siblings" when more than one row shares its set + card number
+// (e.g. a 1st Edition row and an Unlimited row for the same card) — those
+// need an exact finish match (see pickPrice's `strict` parameter).
+const cardKey = (c) => `${c.priceSetId}::${leadingNumber(c.number)}`;
+const siblingCounts = new Map();
+for (const c of priceable) {
+  const k = cardKey(c);
+  siblingCounts.set(k, (siblingCounts.get(k) || 0) + 1);
+}
 
 const headers = { Accept: 'application/json' };
 if (apiKey) headers['X-Api-Key'] = apiKey;
@@ -159,6 +192,7 @@ async function fetchSetWithRetry(setId) {
 
 const results = []; // { id, price, updatedAt }
 const failures = [];
+let unresolved = 0; // matched a card but couldn't find an exact-enough price
 
 for (const setId of setIds) {
   if (setIds.indexOf(setId) > 0) await sleep(500); // pace requests out
@@ -187,14 +221,18 @@ for (const setId of setIds) {
     const n = leadingNumber(c.number);
     const apiCard = n != null ? byNumber.get(n) : null;
     if (!apiCard) continue; // no matching card in this set — leave price untouched
-    const price = pickPrice(apiCard.tcgplayer?.prices, c.variant);
-    if (price == null) continue; // matched the card but no usable price for this finish
+    const strict = (siblingCounts.get(cardKey(c)) || 0) > 1;
+    const price = pickPrice(apiCard.tcgplayer?.prices, c.variant, strict);
+    if (price == null) { unresolved++; continue; } // no exact-enough price available — leave blank
     results.push({ id: c.id, price, updatedAt: normalizeDate(apiCard.tcgplayer?.updatedAt) });
   }
 }
 
 if (failures.length > 0) {
   console.warn(`sync-prices: ${failures.length} set fetch issue(s):\n  ${failures.join('\n  ')}`);
+}
+if (unresolved > 0) {
+  console.log(`sync-prices: ${unresolved} matched row(s) had no exact-enough price and were left blank.`);
 }
 
 if (results.length === 0) {

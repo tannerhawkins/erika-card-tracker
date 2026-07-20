@@ -60,11 +60,15 @@ collection is editable from the sheet and synced across all your devices.
 - A separate scheduled `sync-prices` workflow ([`price-sync.yml`](.github/workflows/price-sync.yml))
   runs daily (and on demand) to pull TCGPlayer market prices from the
   [Pokémon TCG API](https://pokemontcg.io) into the sheet's `price` / `price_updated_at`
-  columns — one price per printing, so 1st Edition vs. Unlimited and Normal vs. Reverse
-  Holo get distinct prices. It reuses the same admin token, touches only those two
-  columns on rows that already exist, and never affects `owned`. Coverage is limited to
-  sets that API has indexed (currently the pre-2026 English sets); Japanese-exclusive
-  cards and any not-yet-indexed set fall back to their TCGPlayer/PriceCharting links.
+  columns — one price per printing. A card with sibling printings (1st Edition vs.
+  Unlimited, Normal vs. Reverse Holo) only gets a price when the API has an
+  edition/finish-specific price for that exact printing — it never falls back to a
+  generic price, since that risks making two different printings look identically
+  priced. A blank price means the source data doesn't distinguish that printing, not
+  that the sync failed. It reuses the same admin token, touches only those two columns
+  on rows that already exist, and never affects `owned`. Coverage is limited to sets the
+  API has indexed (currently the pre-2026 English sets); Japanese-exclusive cards and any
+  not-yet-indexed set fall back to their TCGPlayer/PriceCharting links.
 
 **One-time connection steps are in [`SETUP.md`](SETUP.md).** Until it's connected, the
 site shows a "connect your sheet" screen. The full card list is provided as
