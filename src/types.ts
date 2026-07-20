@@ -24,4 +24,8 @@ export interface ErikaCard {
   links: CardLink[];
   /** Whether this card is in the collection (from the sheet's `owned` column). */
   owned: boolean;
+  /** TCGPlayer market price in USD, synced nightly. Null if unavailable. */
+  price: number | null;
+  /** Date the price was last synced (as provided by the pricing source). */
+  priceUpdatedAt: string | null;
 }

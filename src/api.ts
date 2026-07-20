@@ -40,6 +40,7 @@ function normalizeCard(raw: unknown): ErikaCard | null {
     : [];
 
   const yearNum = Number(r.year);
+  const priceNum = r.price == null || r.price === '' ? NaN : Number(r.price);
 
   return {
     id: String(r.id),
@@ -55,6 +56,8 @@ function normalizeCard(raw: unknown): ErikaCard | null {
     image: r.image ? String(r.image) : undefined,
     links,
     owned: r.owned === true || String(r.owned).toLowerCase() === 'true',
+    price: Number.isFinite(priceNum) ? priceNum : null,
+    priceUpdatedAt: r.priceUpdatedAt ? String(r.priceUpdatedAt) : null,
   };
 }
 

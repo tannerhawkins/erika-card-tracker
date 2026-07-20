@@ -33,7 +33,8 @@ also carry the two Scarlet & Violet reverse patterns, *Energy Symbol* + *Poké B
 Erika's Tangela adds its *Cosmos Holo* promo). Secret rares, full arts, illustration/
 special-illustration rares, ex/GX rainbow, and promos have a single printing. That's
 104 printings across the 57 cards. Each card shows its picture, set, number, rarity, year,
-collector notes, and links to TCGPlayer (pricing) and Bulbapedia/TCG Collector (details).
+collector notes, links to TCGPlayer and Bulbapedia/TCG Collector, and — where the pricing
+sync has coverage — a live TCGPlayer market price per printing (see below).
 
 ## How data is stored — Google Sheets
 
@@ -56,6 +57,14 @@ collection is editable from the sheet and synced across all your devices.
   discovered cards and refreshing details — while **preserving the `owned` status of
   cards you already have** (matched by id). So new cards appear automatically and your
   progress is never lost. It's gated by an admin token and skips itself until configured.
+- A separate scheduled `sync-prices` workflow ([`price-sync.yml`](.github/workflows/price-sync.yml))
+  runs daily (and on demand) to pull TCGPlayer market prices from the
+  [Pokémon TCG API](https://pokemontcg.io) into the sheet's `price` / `price_updated_at`
+  columns — one price per printing, so 1st Edition vs. Unlimited and Normal vs. Reverse
+  Holo get distinct prices. It reuses the same admin token, touches only those two
+  columns on rows that already exist, and never affects `owned`. Coverage is limited to
+  sets that API has indexed (currently the pre-2026 English sets); Japanese-exclusive
+  cards and any not-yet-indexed set fall back to their TCGPlayer/PriceCharting links.
 
 **One-time connection steps are in [`SETUP.md`](SETUP.md).** Until it's connected, the
 site shows a "connect your sheet" screen. The full card list is provided as
@@ -64,12 +73,15 @@ deploy sync keeps it up to date).
 
 ### Secrets
 
-The only value the site needs is the Apps Script Web App URL, provided as a **GitHub
+The site itself needs only the Apps Script Web App URL, provided as a **GitHub
 environment secret** (`VITE_SHEETS_API_URL`) on the `production` environment and injected
 at build. `.env.example` documents it with a dummy placeholder; `.env` is git-ignored.
-No sensitive keys are committed. Because this is a static site, that URL ends up in the
-shipped page by design — the Apps Script only exposes reading cards and toggling one
-card's owned flag.
+The card-list and price syncs additionally use `SHEETS_SYNC_TOKEN` (a real, CI-only
+secret — never shipped to the browser) and, optionally, `POKEMONTCG_API_KEY` to raise the
+pricing API's rate limit. No sensitive keys are committed. Because this is a static site,
+`VITE_SHEETS_API_URL` ends up in the shipped page by design — the Apps Script only
+exposes reading cards, toggling one owned flag, and (gated by the admin token) the two
+sync actions.
 
 ## Development
 

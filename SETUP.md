@@ -18,12 +18,14 @@ You'll do this once. ~10 minutes.
    - Import location: **Replace current sheet**
    - Separator type: **Comma**
    - Leave "Convert text to numbers/dates" on.
-4. You should now have a header row plus 43 cards. The last column, **`owned`**, is
-   `FALSE` for every card. (Tip: select the `owned` column → **Format → Number →
-   Checkbox** to get real checkboxes you can also tick from inside the sheet.)
+4. You should now have a header row plus one row per printing. The `owned` column is
+   `FALSE` by default. (Tip: select the `owned` column → **Format → Number → Checkbox**
+   to get real checkboxes you can also tick from inside the sheet.)
 
-> To add a new card later, just add a row and fill in the columns. To manage links,
-> use `link1_label` / `link1_url` and `link2_label` / `link2_url`.
+> To add a new card later, just add a row and fill in the columns. To manage links, use
+> `link1_label` / `link1_url` and `link2_label` / `link2_url`. The `price_set_id` column
+> is only used by the price sync (step 7) — leave it blank unless you know the card's
+> [Pokémon TCG API](https://pokemontcg.io) set code.
 
 ## 2. Add the Apps Script
 
@@ -91,6 +93,27 @@ sync step then skips itself cleanly.
 > synced deploy will add the newer cards and keep your existing checkmarks. If you
 > never imported, the sync populates the sheet from scratch (all unchecked).
 
+## 7. (Optional) Turn on the nightly price sync
+
+A separate scheduled workflow, [`price-sync.yml`](.github/workflows/price-sync.yml),
+fetches TCGPlayer market prices from the [Pokémon TCG API](https://pokemontcg.io) and
+writes them into your sheet's `price` / `price_updated_at` columns — one price per
+printing (so 1st Edition and Unlimited, or Normal and Reverse Holo, each get their own
+price). It reuses the **same** `VITE_SHEETS_API_URL` and `SHEETS_SYNC_TOKEN` secrets from
+step 5 — nothing new to set up if you've already turned on card sync.
+
+- Runs automatically once a day, and can be triggered manually any time from **Actions →
+  "Sync card prices" → Run workflow**.
+- Coverage: only sets the Pokémon TCG API has indexed — currently Gym Heroes, Gym
+  Challenge, Team Up, Cosmic Eclipse, and Scarlet & Violet 151 (74 of the 104 printings).
+  It's **English-only**, so Japanese-exclusive cards aren't priced this way, and a
+  brand-new set (like Ascended Heroes at the time of writing) may not be indexed yet.
+  Those cards keep their existing TCGPlayer/PriceCharting links for manual lookup — see
+  the `price_set_id` column in [`sheet-seed/cards.csv`](sheet-seed/cards.csv) for exactly
+  which sets are covered, and update it once a set gets added upstream.
+- *(Optional)* A free API key from <https://pokemontcg.io> raises the rate limit; add it
+  as the environment secret **`POKEMONTCG_API_KEY`**. Works fine without one, just slower.
+
 ---
 
 ## Local development
@@ -108,7 +131,8 @@ npm run dev
 |---|---|---|
 | Apps Script Web App URL | `.env.example` → `REPLACE_WITH_DEPLOYMENT_ID` | GitHub environment secret `VITE_SHEETS_API_URL` (and `.env` locally) |
 | Optional write token | `.env.example` → blank | GitHub environment secret `VITE_SHEETS_API_TOKEN` + `SHARED_TOKEN` in `Code.gs` |
-| Deploy-sync admin token | `Code.gs` → `ADMIN_TOKEN = ''` | GitHub environment secret `SHEETS_SYNC_TOKEN` + `ADMIN_TOKEN` in `Code.gs` |
+| Deploy-sync admin token | `Code.gs` → `ADMIN_TOKEN = ''` | GitHub environment secret `SHEETS_SYNC_TOKEN` + `ADMIN_TOKEN` in `Code.gs` (also gates the price sync) |
+| Pokémon TCG API key (optional) | — | GitHub environment secret `POKEMONTCG_API_KEY` |
 
 **No sensitive keys are committed.** The Web App URL and the two tokens all live in
 GitHub secrets / your own Apps Script, never in the repo. The Web App URL is injected at

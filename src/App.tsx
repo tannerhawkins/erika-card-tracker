@@ -135,7 +135,19 @@ function CardTile({
                   checked={vOwned}
                   onChange={() => onToggle(v.id)}
                 />
-                <span>{label}</span>
+                <span className="variant-label">{label}</span>
+                {v.price != null && (
+                  <span
+                    className="variant-price"
+                    title={
+                      v.priceUpdatedAt
+                        ? `TCGPlayer market price as of ${v.priceUpdatedAt}`
+                        : 'TCGPlayer market price'
+                    }
+                  >
+                    ${v.price.toFixed(2)}
+                  </span>
+                )}
               </label>
             );
           })}
@@ -342,8 +354,9 @@ export default function App() {
       <footer className="footer">
         <p>
           Cards and owned status are stored in a Google Sheet and synced across your devices. Each
-          card lists its printings — check the ones you own and it saves straight to the sheet. Card
-          images © The Pokémon Company — served from public card databases.
+          card lists its printings — check the ones you own and it saves straight to the sheet.
+          Prices are TCGPlayer market prices, synced nightly where available (not every printing has
+          pricing data). Card images © The Pokémon Company — served from public card databases.
         </p>
       </footer>
     </div>

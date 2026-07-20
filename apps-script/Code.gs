@@ -31,16 +31,29 @@
  *  secret that only lives in CI (never shipped to the browser). Set it below to
  *  a strong random string and store the same value in the GitHub environment
  *  secret SHEETS_SYNC_TOKEN. Leave it blank to disable the sync endpoint.
+ *
+ * ── Scheduled price sync (same ADMIN_TOKEN) ─────────────────────────────────
+ *  A separate daily GitHub Actions workflow posts TCGPlayer market prices here
+ *  (action: 'updatePrices'), gated by the same ADMIN_TOKEN. It only ever writes
+ *  the `price` / `price_updated_at` columns of rows that already exist — it
+ *  never adds, removes, or reorders rows, and never touches `owned`.
  */
 
 var SHEET_NAME = 'Cards';
 var SHARED_TOKEN = ''; // '' = open. Must match VITE_SHEETS_API_TOKEN if set.
-var ADMIN_TOKEN = ''; // Strong secret for the deploy sync. Must match SHEETS_SYNC_TOKEN.
+var ADMIN_TOKEN = ''; // Strong secret for the deploy + price sync. Must match SHEETS_SYNC_TOKEN.
 
 var HEADERS = [
   'id', 'name', 'set', 'number', 'variant', 'rarity', 'year', 'category', 'language',
-  'notes', 'image', 'link1_label', 'link1_url', 'link2_label', 'link2_url', 'owned',
+  'notes', 'image', 'link1_label', 'link1_url', 'link2_label', 'link2_url',
+  'owned', 'price', 'price_updated_at',
 ];
+
+// Columns that hold LIVE state written by something other than the repo's card
+// sync (the toggle endpoint, the price sync). The card-list sync always
+// preserves these for rows that already exist, instead of overwriting them
+// with the (blank) values from the repo's CSV.
+var STICKY_COLUMNS = ['owned', 'price', 'price_updated_at'];
 
 function getSheet_() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
@@ -70,6 +83,8 @@ function rowToCard_(headerIndex, row) {
   if (cell('link2_url')) links.push({ label: String(cell('link2_label') || 'Link'), url: String(cell('link2_url')) });
 
   var yearNum = parseInt(cell('year'), 10);
+  var priceRaw = cell('price');
+  var priceNum = (priceRaw === '' || priceRaw === null || priceRaw === undefined) ? NaN : Number(priceRaw);
   return {
     id: String(cell('id')),
     name: String(cell('name')),
@@ -84,6 +99,8 @@ function rowToCard_(headerIndex, row) {
     image: cell('image') ? String(cell('image')) : undefined,
     links: links,
     owned: truthy_(cell('owned')),
+    price: isNaN(priceNum) ? null : priceNum,
+    priceUpdatedAt: cell('price_updated_at') ? String(cell('price_updated_at')) : null,
   };
 }
 
@@ -111,9 +128,10 @@ function doGet() {
 }
 
 /**
- * POST handler. Two shapes:
- *   { id, owned, token? }            → flip one card's owned cell.
- *   { action: 'sync', token, cards } → bulk-upsert the card list (deploy sync).
+ * POST handler. Three shapes:
+ *   { id, owned, token? }                → flip one card's owned cell.
+ *   { action: 'sync', token, cards }     → bulk-upsert the card list (deploy sync).
+ *   { action: 'updatePrices', token, prices } → bulk-write price columns (price sync).
  */
 function doPost(e) {
   var body = {};
@@ -124,6 +142,7 @@ function doPost(e) {
   }
 
   if (body.action === 'sync') return handleSync_(body);
+  if (body.action === 'updatePrices') return handleUpdatePrices_(body);
 
   if (SHARED_TOKEN && body.token !== SHARED_TOKEN) {
     return json_({ ok: false, error: 'unauthorized' });
@@ -152,14 +171,17 @@ function doPost(e) {
 
 /**
  * Bulk-upsert the card list from the repo (called by the deploy workflow).
- * The sheet is rewritten to mirror the incoming cards. For each card the `owned`
- * value is chosen as:
+ * The sheet is rewritten to mirror the incoming cards. For every STICKY_COLUMN
+ * (owned, price, price_updated_at) the value is chosen as:
  *   - the EXISTING sheet value if the card is already in the sheet (so your live
- *     checkmarks are never lost), otherwise
- *   - the incoming card's `owned` value (lets the seed CSV pre-mark a starting
- *     collection when a card is new to the sheet, e.g. first-time population).
- * Cards no longer in the repo list are dropped. The `owned` column's checkbox
- * formatting is preserved because only cell contents are rewritten.
+ *     checkmarks and synced prices are never lost), otherwise
+ *   - for `owned` only: the incoming card's value (lets the seed CSV pre-mark a
+ *     starting collection when a card is new to the sheet); price columns start
+ *     blank for brand-new rows and are filled by the next price sync.
+ * All other columns always take the incoming (repo) value — the repo is the
+ * source of truth for card metadata. Cards no longer in the repo list are
+ * dropped. Column formatting (checkboxes) is preserved because only cell
+ * contents are rewritten.
  */
 function handleSync_(body) {
   if (!ADMIN_TOKEN || body.token !== ADMIN_TOKEN) {
@@ -173,17 +195,21 @@ function handleSync_(body) {
 
   var sheet = getSheet_();
 
-  // Snapshot existing owned status by id.
-  var ownedById = {};
+  // Snapshot the sticky columns of every existing row, by id.
+  var prevById = {};
   var existing = sheet.getDataRange().getValues();
   if (existing.length > 1) {
     var eIdx = headerIndex_(existing[0]);
-    if (eIdx['id'] !== undefined && eIdx['owned'] !== undefined) {
+    if (eIdx['id'] !== undefined) {
       for (var r = 1; r < existing.length; r++) {
         var eid = existing[r][eIdx['id']];
-        if (eid !== '' && eid !== null && eid !== undefined) {
-          ownedById[String(eid)] = existing[r][eIdx['owned']];
+        if (eid === '' || eid === null || eid === undefined) continue;
+        var snapshot = {};
+        for (var s = 0; s < STICKY_COLUMNS.length; s++) {
+          var col = STICKY_COLUMNS[s];
+          snapshot[col] = eIdx[col] !== undefined ? existing[r][eIdx[col]] : '';
         }
+        prevById[String(eid)] = snapshot;
       }
     }
   }
@@ -195,15 +221,17 @@ function handleSync_(body) {
   for (var c = 0; c < cards.length; c++) {
     var card = cards[c] || {};
     var id = String(card.id == null ? '' : card.id);
-    var hasPrev = Object.prototype.hasOwnProperty.call(ownedById, id);
+    var prev = prevById[id];
+    var hasPrev = !!prev;
     if (hasPrev) preserved++;
     else added++;
 
-    // Existing card → keep the sheet's owned value; new card → use payload's.
-    var ownedVal = truthy_(hasPrev ? ownedById[id] : card.owned);
-
     var row = HEADERS.map(function (h) {
-      if (h === 'owned') return ownedVal;
+      if (STICKY_COLUMNS.indexOf(h) !== -1) {
+        if (hasPrev) return prev[h] === undefined ? '' : prev[h];
+        if (h === 'owned') return truthy_(card.owned); // seed initial owned for new rows
+        return ''; // price / price_updated_at start blank for new rows
+      }
       return card[h] == null ? '' : card[h];
     });
     grid.push(row);
@@ -214,4 +242,53 @@ function handleSync_(body) {
   sheet.getRange(1, 1, grid.length, HEADERS.length).setValues(grid);
 
   return json_({ ok: true, total: cards.length, added: added, preserved: preserved });
+}
+
+/**
+ * Bulk-write price + price_updated_at for existing rows, matched by id (called
+ * by the scheduled price-sync workflow). Only touches those two columns on rows
+ * that already exist — never adds, removes, or reorders rows, and never touches
+ * `owned` or any other column. Ids not found in the sheet are skipped and
+ * counted, not treated as an error (a card's variant scheme can outpace what a
+ * particular pricing source covers).
+ */
+function handleUpdatePrices_(body) {
+  if (!ADMIN_TOKEN || body.token !== ADMIN_TOKEN) {
+    return json_({ ok: false, error: 'unauthorized' });
+  }
+  var prices = body.prices;
+  if (!Array.isArray(prices) || prices.length === 0) {
+    return json_({ ok: false, error: 'no_prices' });
+  }
+
+  var sheet = getSheet_();
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return json_({ ok: false, error: 'empty_sheet' });
+
+  var idx = headerIndex_(values[0]);
+  var idCol = idx['id'];
+  var priceCol = idx['price'];
+  var updatedCol = idx['price_updated_at'];
+  if (idCol === undefined || priceCol === undefined || updatedCol === undefined) {
+    return json_({ ok: false, error: 'missing_columns' });
+  }
+
+  var rowById = {};
+  for (var r = 1; r < values.length; r++) {
+    var rid = values[r][idCol];
+    if (rid !== '' && rid !== null && rid !== undefined) rowById[String(rid)] = r + 1; // 1-based
+  }
+
+  var updated = 0;
+  var skipped = 0;
+  for (var p = 0; p < prices.length; p++) {
+    var entry = prices[p] || {};
+    var rowNum = rowById[String(entry.id)];
+    if (!rowNum) { skipped++; continue; }
+    sheet.getRange(rowNum, priceCol + 1).setValue(entry.price == null ? '' : entry.price);
+    sheet.getRange(rowNum, updatedCol + 1).setValue(entry.updatedAt || '');
+    updated++;
+  }
+
+  return json_({ ok: true, updated: updated, skipped: skipped });
 }

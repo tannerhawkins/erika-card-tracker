@@ -364,6 +364,23 @@
   cursor: pointer;
 }
 
+.variant-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.variant-price {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.variant-row.owned .variant-price {
+  color: var(--accent);
+}
+
 .variant-row.owned span {
   color: var(--accent);
 }
