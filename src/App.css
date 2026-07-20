@@ -238,6 +238,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+.set-value-line {
+  margin: -6px 0 14px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.set-value-note {
+  color: var(--text-muted);
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));

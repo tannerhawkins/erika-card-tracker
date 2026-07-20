@@ -34,6 +34,34 @@ function buildGroups(cards: ErikaCard[]): CardGroup[] {
 const groupOwned = (g: CardGroup, owned: Set<string>) =>
   g.variants.some((v) => owned.has(v.id));
 
+interface ValueStats {
+  value: number;
+  costToComplete: number;
+  missingPriceGroups: number;
+}
+
+/** Owned value (sum of owned variants' prices) and cost to complete (cheapest missing variant per unowned card). */
+function computeValueStats(groups: CardGroup[], owned: Set<string>): ValueStats {
+  let value = 0;
+  let costToComplete = 0;
+  let missingPriceGroups = 0;
+  for (const g of groups) {
+    if (groupOwned(g, owned)) {
+      for (const v of g.variants) {
+        if (owned.has(v.id) && v.price != null) value += v.price;
+      }
+    } else {
+      const prices = g.variants.map((v) => v.price).filter((p): p is number => p != null);
+      if (prices.length === 0) {
+        missingPriceGroups += 1;
+      } else {
+        costToComplete += Math.min(...prices);
+      }
+    }
+  }
+  return { value, costToComplete, missingPriceGroups };
+}
+
 /** Leading integer of a card number ("003/217" → 3); non-numeric sorts last. */
 function cardNumberValue(number: string): number {
   const match = number.match(/\d+/);
@@ -189,12 +217,16 @@ export default function App() {
   const sections = useMemo(() => {
     const order = orderedSets(groups);
     return order
-      .map((set) => ({
-        set,
-        groups: filtered.filter((g) => g.base.set === set).sort(byNumber),
-        total: groups.filter((g) => g.base.set === set).length,
-        ownedCount: groups.filter((g) => g.base.set === set && groupOwned(g, owned)).length,
-      }))
+      .map((set) => {
+        const setGroups = groups.filter((g) => g.base.set === set);
+        return {
+          set,
+          groups: filtered.filter((g) => g.base.set === set).sort(byNumber),
+          total: setGroups.length,
+          ownedCount: setGroups.filter((g) => groupOwned(g, owned)).length,
+          ...computeValueStats(setGroups, owned),
+        };
+      })
       .filter((s) => s.groups.length > 0);
   }, [groups, filtered, owned]);
 
@@ -206,27 +238,11 @@ export default function App() {
   const jpTotal = groups.filter((g) => g.base.language === 'JP').length;
   const jpOwned = groups.filter((g) => g.base.language === 'JP' && groupOwned(g, owned)).length;
 
-  const collectionValue = useMemo(
-    () => cards.reduce((sum, c) => (owned.has(c.id) && c.price != null ? sum + c.price : sum), 0),
-    [cards, owned],
-  );
-
-  const { costToComplete, missingPriceGroups } = useMemo(() => {
-    let cost = 0;
-    let missing = 0;
-    for (const g of groups) {
-      if (groupOwned(g, owned)) continue;
-      const prices = g.variants
-        .map((v) => v.price)
-        .filter((p): p is number => p != null);
-      if (prices.length === 0) {
-        missing += 1;
-        continue;
-      }
-      cost += Math.min(...prices);
-    }
-    return { costToComplete: cost, missingPriceGroups: missing };
-  }, [groups, owned]);
+  const {
+    value: collectionValue,
+    costToComplete,
+    missingPriceGroups,
+  } = useMemo(() => computeValueStats(groups, owned), [groups, owned]);
 
   const currency = (n: number) =>
     n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -384,6 +400,16 @@ export default function App() {
                 {section.ownedCount} / {section.total}
               </span>
             </h2>
+            <p className="set-value-line">
+              {currency(section.value)} owned · {currency(section.costToComplete)} to complete
+              {section.missingPriceGroups > 0 && (
+                <span className="set-value-note">
+                  {' '}
+                  · {section.missingPriceGroups} missing card
+                  {section.missingPriceGroups === 1 ? '' : 's'} have no price data
+                </span>
+              )}
+            </p>
             <div className="card-grid">
               {section.groups.map((group) => (
                 <CardTile key={group.key} group={group} owned={owned} onToggle={toggle} />
