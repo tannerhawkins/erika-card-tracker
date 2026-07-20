@@ -34,6 +34,20 @@ function buildGroups(cards: ErikaCard[]): CardGroup[] {
 const groupOwned = (g: CardGroup, owned: Set<string>) =>
   g.variants.some((v) => owned.has(v.id));
 
+/** Leading integer of a card number ("003/217" → 3); non-numeric sorts last. */
+function cardNumberValue(number: string): number {
+  const match = number.match(/\d+/);
+  return match ? parseInt(match[0], 10) : Number.POSITIVE_INFINITY;
+}
+
+/** Order card groups within a section by card number, then name as a tiebreak. */
+function byNumber(a: CardGroup, b: CardGroup): number {
+  const na = cardNumberValue(a.base.number);
+  const nb = cardNumberValue(b.base.number);
+  if (na !== nb) return na - nb;
+  return a.base.number.localeCompare(b.base.number) || a.base.name.localeCompare(b.base.name);
+}
+
 function CardImage({ card }: { card: ErikaCard }) {
   const [failed, setFailed] = useState(false);
 
@@ -165,7 +179,7 @@ export default function App() {
     return order
       .map((set) => ({
         set,
-        groups: filtered.filter((g) => g.base.set === set),
+        groups: filtered.filter((g) => g.base.set === set).sort(byNumber),
         total: groups.filter((g) => g.base.set === set).length,
         ownedCount: groups.filter((g) => g.base.set === set && groupOwned(g, owned)).length,
       }))
