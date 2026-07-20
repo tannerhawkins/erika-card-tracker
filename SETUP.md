@@ -23,9 +23,10 @@ You'll do this once. ~10 minutes.
    to get real checkboxes you can also tick from inside the sheet.)
 
 > To add a new card later, just add a row and fill in the columns. To manage links, use
-> `link1_label` / `link1_url` and `link2_label` / `link2_url`. The `price_set_id` column
-> is only used by the price sync (step 7) — leave it blank unless you know the card's
-> [Pokémon TCG API](https://pokemontcg.io) set code.
+> `link1_label` / `link1_url` and `link2_label` / `link2_url`. The `tcgplayer_id` column
+> is only used by the price sync (step 7) — it's the numeric id from a
+> `tcgplayer.com/product/<id>` URL, giving that row exact pricing. Leave it blank and the
+> price sync will look the card up by name instead (slightly less precise, but automatic).
 
 ## 2. Add the Apps Script
 
@@ -93,26 +94,37 @@ sync step then skips itself cleanly.
 > synced deploy will add the newer cards and keep your existing checkmarks. If you
 > never imported, the sync populates the sheet from scratch (all unchecked).
 
-## 7. (Optional) Turn on the nightly price sync
+## 7. Turn on the nightly price sync
 
 A separate scheduled workflow, [`price-sync.yml`](.github/workflows/price-sync.yml),
-fetches TCGPlayer market prices from the [Pokémon TCG API](https://pokemontcg.io) and
-writes them into your sheet's `price` / `price_updated_at` columns — one price per
-printing (so 1st Edition and Unlimited, or Normal and Reverse Holo, each get their own
-price). It reuses the **same** `VITE_SHEETS_API_URL` and `SHEETS_SYNC_TOKEN` secrets from
-step 5 — nothing new to set up if you've already turned on card sync.
+fetches market prices from the [JustTCG API](https://justtcg.com) and writes them into
+your sheet's `price` / `price_updated_at` columns — one price per printing (so 1st
+Edition and Unlimited, or Normal and Reverse Holo, each get their own price, never a
+shared/guessed one). It reuses the **same** `VITE_SHEETS_API_URL` and `SHEETS_SYNC_TOKEN`
+secrets from step 5.
+
+1. Sign up for a free account at <https://justtcg.com> and grab your API key (free tier:
+   100 requests/day, which comfortably covers this collection's ~104 printings once a
+   day).
+2. In GitHub → the **`production`** environment, add an environment secret:
+   - Name: **`JUSTTCG_API_KEY`**
+   - Value: your key.
+
+That's it — no other config needed. `JUSTTCG_API_KEY` is required (unlike the old
+optional pokemontcg.io key); without it the sync just skips itself cleanly.
 
 - Runs automatically once a day, and can be triggered manually any time from **Actions →
   "Sync card prices" → Run workflow**.
-- Coverage: only sets the Pokémon TCG API has indexed — currently Gym Heroes, Gym
-  Challenge, Team Up, Cosmic Eclipse, and Scarlet & Violet 151 (74 of the 104 printings).
-  It's **English-only**, so Japanese-exclusive cards aren't priced this way, and a
-  brand-new set (like Ascended Heroes at the time of writing) may not be indexed yet.
-  Those cards keep their existing TCGPlayer/PriceCharting links for manual lookup — see
-  the `price_set_id` column in [`sheet-seed/cards.csv`](sheet-seed/cards.csv) for exactly
-  which sets are covered, and update it once a set gets added upstream.
-- *(Optional)* A free API key from <https://pokemontcg.io> raises the rate limit; add it
-  as the environment secret **`POKEMONTCG_API_KEY`**. Works fine without one, just slower.
+- Lookup strategy: rows with a `tcgplayer_id` (see step 1) are looked up exactly by
+  TCGPlayer product id; everything else is looked up by card name (and, for
+  Japanese-exclusive cards, the `pokemon-japan` game — JustTCG added full Japanese OCG
+  pricing in 2025, so this is the one part of the pipeline that can price those cards at
+  all). A row with sibling printings only gets a price when JustTCG has an exact
+  printing-level match for it — never a generic/borrowed price from a sibling.
+- Some rows will still come back blank — that means the source genuinely doesn't track a
+  distinct price for that exact printing (common for lower-value Gym Heroes/Challenge
+  commons), not that the sync failed. Those cards keep their TCGPlayer/PriceCharting
+  links for manual lookup.
 
 ---
 
@@ -132,7 +144,7 @@ npm run dev
 | Apps Script Web App URL | `.env.example` → `REPLACE_WITH_DEPLOYMENT_ID` | GitHub environment secret `VITE_SHEETS_API_URL` (and `.env` locally) |
 | Optional write token | `.env.example` → blank | GitHub environment secret `VITE_SHEETS_API_TOKEN` + `SHARED_TOKEN` in `Code.gs` |
 | Deploy-sync admin token | `Code.gs` → `ADMIN_TOKEN = ''` | GitHub environment secret `SHEETS_SYNC_TOKEN` + `ADMIN_TOKEN` in `Code.gs` (also gates the price sync) |
-| Pokémon TCG API key (optional) | — | GitHub environment secret `POKEMONTCG_API_KEY` |
+| JustTCG API key (required for price sync) | — | GitHub environment secret `JUSTTCG_API_KEY` |
 
 **No sensitive keys are committed.** The Web App URL and the two tokens all live in
 GitHub secrets / your own Apps Script, never in the repo. The Web App URL is injected at

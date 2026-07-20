@@ -23,5 +23,5 @@ jobs:
         env:
           SHEETS_API_URL: ${{ secrets.VITE_SHEETS_API_URL }}
           SHEETS_SYNC_TOKEN: ${{ secrets.SHEETS_SYNC_TOKEN }}
-          POKEMONTCG_API_KEY: ${{ secrets.POKEMONTCG_API_KEY }}
+          JUSTTCG_API_KEY: ${{ secrets.JUSTTCG_API_KEY }}
         run: node scripts/sync-prices.mjs

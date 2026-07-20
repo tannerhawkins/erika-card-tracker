@@ -58,17 +58,17 @@ collection is editable from the sheet and synced across all your devices.
   cards you already have** (matched by id). So new cards appear automatically and your
   progress is never lost. It's gated by an admin token and skips itself until configured.
 - A separate scheduled `sync-prices` workflow ([`price-sync.yml`](.github/workflows/price-sync.yml))
-  runs daily (and on demand) to pull TCGPlayer market prices from the
-  [Pokémon TCG API](https://pokemontcg.io) into the sheet's `price` / `price_updated_at`
-  columns — one price per printing. A card with sibling printings (1st Edition vs.
-  Unlimited, Normal vs. Reverse Holo) only gets a price when the API has an
-  edition/finish-specific price for that exact printing — it never falls back to a
-  generic price, since that risks making two different printings look identically
-  priced. A blank price means the source data doesn't distinguish that printing, not
-  that the sync failed. It reuses the same admin token, touches only those two columns
-  on rows that already exist, and never affects `owned`. Coverage is limited to sets the
-  API has indexed (currently the pre-2026 English sets); Japanese-exclusive cards and any
-  not-yet-indexed set fall back to their TCGPlayer/PriceCharting links.
+  runs daily (and on demand) to pull market prices from the [JustTCG API](https://justtcg.com)
+  into the sheet's `price` / `price_updated_at` columns — one price per printing. Rows
+  with a `tcgplayer_id` (in [`sheet-seed/cards.csv`](sheet-seed/cards.csv)) are looked up
+  exactly by TCGPlayer product id; everything else is looked up by name, including
+  Japanese-exclusive cards via JustTCG's `pokemon-japan` catalog. A card with sibling
+  printings (1st Edition vs. Unlimited, Normal vs. Reverse Holo) only gets a price when
+  there's an exact printing-level match — it never falls back to a generic/sibling price,
+  since that risks making two different printings look identically priced. A blank price
+  means the source doesn't track that exact printing, not that the sync failed. It reuses
+  the same admin token, touches only those two columns on rows that already exist, and
+  never affects `owned`.
 
 **One-time connection steps are in [`SETUP.md`](SETUP.md).** Until it's connected, the
 site shows a "connect your sheet" screen. The full card list is provided as
@@ -80,9 +80,9 @@ deploy sync keeps it up to date).
 The site itself needs only the Apps Script Web App URL, provided as a **GitHub
 environment secret** (`VITE_SHEETS_API_URL`) on the `production` environment and injected
 at build. `.env.example` documents it with a dummy placeholder; `.env` is git-ignored.
-The card-list and price syncs additionally use `SHEETS_SYNC_TOKEN` (a real, CI-only
-secret — never shipped to the browser) and, optionally, `POKEMONTCG_API_KEY` to raise the
-pricing API's rate limit. No sensitive keys are committed. Because this is a static site,
+The card-list and price syncs additionally use `SHEETS_SYNC_TOKEN` and `JUSTTCG_API_KEY`
+(both real, CI-only secrets — never shipped to the browser; `JUSTTCG_API_KEY` is free at
+[justtcg.com](https://justtcg.com)). No sensitive keys are committed. Because this is a static site,
 `VITE_SHEETS_API_URL` ends up in the shipped page by design — the Apps Script only
 exposes reading cards, toggling one owned flag, and (gated by the admin token) the two
 sync actions.
