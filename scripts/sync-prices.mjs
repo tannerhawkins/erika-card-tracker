@@ -116,15 +116,20 @@ async function callApi(url, options) {
   const attempts = 3;
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    let res;
     try {
-      const res = await fetch(url, { ...options, headers: { 'x-api-key': apiKey, ...options?.headers } });
-      if (res.ok) return await res.json();
-      lastError = `HTTP ${res.status}`;
-      if (res.status === 429 && attempt < attempts) await sleep(attempt * 3000); // back off harder on rate limit
+      res = await fetch(url, { ...options, headers: { 'x-api-key': apiKey, ...options?.headers } });
     } catch (err) {
       lastError = `network error (${err instanceof Error ? err.message : 'unknown'})`;
+      if (attempt < attempts) await sleep(attempt * 1500);
+      continue;
     }
-    if (attempt < attempts) await sleep(attempt * 1500);
+    if (res.ok) return await res.json();
+    lastError = `HTTP ${res.status}`;
+    if (attempt < attempts) {
+      // Rate limits need a longer, single backoff — not stacked on top of the default delay.
+      await sleep(res.status === 429 ? attempt * 4000 : attempt * 1500);
+    }
   }
   throw new Error(lastError || 'unknown fetch failure');
 }
@@ -209,7 +214,8 @@ for (let i = 0; i < withId.length; i += BATCH_SIZE) {
 // ── Strategy 2: name-search fallback for rows without a tcgplayer_id ────────
 const needsSearch = allCards.filter((c) => !c.tcgplayerId);
 for (const c of needsSearch) {
-  await sleep(350); // pace individual search requests
+  await sleep(700); // pace individual search requests — real testing showed the free tier
+  // throttling well before its 100/day cap; this is slower but completes cleanly in one run
   requestCount++;
   const game = c.language === 'JP' ? 'pokemon-japan' : 'pokemon';
   const url = `${API_BASE}?q=${encodeURIComponent(c.name)}&game=${game}`;
