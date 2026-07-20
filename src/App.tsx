@@ -393,13 +393,13 @@ export default function App() {
         )}
 
         {sections.map((section) => (
-          <section key={section.set} className="set-section">
-            <h2 className="set-title">
+          <details key={section.set} className="set-section" open>
+            <summary className="set-title">
               {section.set}
               <span className="set-progress">
                 {section.ownedCount} / {section.total}
               </span>
-            </h2>
+            </summary>
             <p className="set-value-line">
               {currency(section.value)} owned · {currency(section.costToComplete)} to complete
               {section.missingPriceGroups > 0 && (
@@ -415,7 +415,7 @@ export default function App() {
                 <CardTile key={group.key} group={group} owned={owned} onToggle={toggle} />
               ))}
             </div>
-          </section>
+          </details>
         ))}
       </main>
 

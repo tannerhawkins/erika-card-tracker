@@ -229,6 +229,32 @@
   margin: 0 0 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.set-title::-webkit-details-marker {
+  display: none;
+}
+
+.set-title::after {
+  content: '▾';
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform 150ms ease;
+}
+
+.set-title:hover::after {
+  color: var(--text-secondary);
+}
+
+.set-section:not([open]) .set-title::after {
+  transform: rotate(-90deg);
+}
+
+.set-section:not([open]) .set-title {
+  margin-bottom: 0;
 }
 
 .set-progress {
