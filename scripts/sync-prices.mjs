@@ -134,20 +134,39 @@ console.log(`sync-prices: fetching ${setIds.length} set(s) for ${priceable.lengt
 const headers = { Accept: 'application/json' };
 if (apiKey) headers['X-Api-Key'] = apiKey;
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// The free/unauthenticated tier of the Pokémon TCG API appears to throttle
+// bursts of requests (observed as HTTP 404 on later requests in a short
+// sequence, not the 429 you'd expect from a typical rate limit). Retry with
+// backoff and pace requests out to ride through that.
+async function fetchSetWithRetry(setId) {
+  const url = `${API_BASE}?q=${encodeURIComponent(`set.id:${setId}`)}&pageSize=250`;
+  const attempts = 3;
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(url, { headers });
+      if (res.ok) return res;
+      lastError = `HTTP ${res.status}`;
+    } catch (err) {
+      lastError = `network error (${err instanceof Error ? err.message : 'unknown'})`;
+    }
+    if (attempt < attempts) await sleep(attempt * 1500); // 1.5s, then 3s
+  }
+  throw new Error(lastError || 'unknown fetch failure');
+}
+
 const results = []; // { id, price, updatedAt }
 const failures = [];
 
 for (const setId of setIds) {
-  const url = `${API_BASE}?q=${encodeURIComponent(`set.id:${setId}`)}&pageSize=250`;
+  if (setIds.indexOf(setId) > 0) await sleep(500); // pace requests out
   let res;
   try {
-    res = await fetch(url, { headers });
+    res = await fetchSetWithRetry(setId);
   } catch (err) {
-    failures.push(`${setId}: network error (${err instanceof Error ? err.message : 'unknown'})`);
-    continue;
-  }
-  if (!res.ok) {
-    failures.push(`${setId}: HTTP ${res.status}`);
+    failures.push(`${setId}: ${err instanceof Error ? err.message : 'unknown error'}`);
     continue;
   }
   const data = await res.json().catch(() => null);
