@@ -91,7 +91,19 @@ if (!res.ok) {
 
 const data = await res.json().catch(() => ({}));
 if (!data.ok) {
-  console.error(`sync-sheet: sync rejected — ${data.error || 'unknown error'}.`);
+  const hints = {
+    // Reached the old single-toggle handler → the deployed Web App predates the sync endpoint.
+    missing_id:
+      'The Web App is running an older Code.gs without the sync endpoint. Re-paste the current ' +
+      'apps-script/Code.gs, then update the EXISTING deployment: Deploy → Manage deployments → ' +
+      'Edit → Version: New version → Deploy (do not create a new deployment — it mints a new URL).',
+    bad_json: 'The Web App could not parse the request body.',
+    unauthorized: 'SHEETS_SYNC_TOKEN does not match ADMIN_TOKEN in Code.gs.',
+    no_cards: 'The payload contained no cards.',
+    missing_columns: 'The sheet is missing required columns — re-import sheet-seed/cards.csv.',
+  };
+  const hint = hints[data.error];
+  console.error(`sync-sheet: sync rejected — ${data.error || 'unknown error'}.${hint ? ' ' + hint : ''}`);
   process.exit(1);
 }
 
