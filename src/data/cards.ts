@@ -8,6 +8,7 @@
 export const SET_ORDER = [
   'Gym Heroes',
   'Gym Challenge',
+  'XY Promos',
   'Team Up',
   'Hidden Fates',
   'Cosmic Eclipse',
