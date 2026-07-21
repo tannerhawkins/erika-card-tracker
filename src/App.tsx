@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import './App.css';
 import { SET_ORDER } from './data/cards';
 import type { ErikaCard } from './types';
 import { useCollection } from './useCollection';
+import { editLockConfigured, useEditLock } from './useEditLock';
+import type { EditLock } from './useEditLock';
 
 type OwnershipFilter = 'all' | 'owned' | 'missing';
 type LanguageFilter = 'all' | 'EN' | 'JP';
@@ -99,14 +102,65 @@ function CardImage({ card }: { card: ErikaCard }) {
   );
 }
 
+/** Lock icon (top right of the header). Click opens an inline passcode field. */
+function EditLockControl({ lock }: { lock: EditLock }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const [shake, setShake] = useState(false);
+
+  if (!editLockConfigured) return null;
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (lock.unlock(value)) {
+      setOpen(false);
+      setValue('');
+    } else {
+      setValue('');
+      setShake(true);
+      window.setTimeout(() => setShake(false), 300);
+    }
+  };
+
+  if (open) {
+    return (
+      <form className={`lock-form${shake ? ' shake' : ''}`} onSubmit={handleSubmit}>
+        <input
+          type="password"
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => setOpen(false)}
+          placeholder="Passcode"
+          aria-label="Enter passcode to unlock editing"
+        />
+      </form>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="lock-button"
+      aria-label={lock.locked ? 'Unlock editing' : 'Lock editing'}
+      title={lock.locked ? 'Unlock editing' : 'Lock editing'}
+      onClick={() => (lock.locked ? setOpen(true) : lock.lock())}
+    >
+      {lock.locked ? '🔒' : '🔓'}
+    </button>
+  );
+}
+
 function CardTile({
   group,
   owned,
   onToggle,
+  locked,
 }: {
   group: CardGroup;
   owned: Set<string>;
   onToggle: (id: string) => void;
+  locked: boolean;
 }) {
   const { base, variants } = group;
   const isOwned = groupOwned(group, owned);
@@ -154,14 +208,18 @@ function CardTile({
             return (
               <label
                 key={v.id}
-                className={`variant-row${vOwned ? ' owned' : ''}`}
+                className={`variant-row${vOwned ? ' owned' : ''}${locked ? ' locked' : ''}`}
                 htmlFor={cbId}
+                title={locked ? 'Tap the lock icon above to unlock editing' : undefined}
               >
                 <input
                   id={cbId}
                   type="checkbox"
                   checked={vOwned}
-                  onChange={() => onToggle(v.id)}
+                  disabled={locked}
+                  onChange={() => {
+                    if (!locked) onToggle(v.id);
+                  }}
                 />
                 <span className="variant-label">{label}</span>
                 {v.price != null && (
@@ -195,6 +253,7 @@ function orderedSets(groups: CardGroup[]): string[] {
 
 export default function App() {
   const { cards, owned, status, error, toggle, refresh, dismissError } = useCollection();
+  const editLock = useEditLock();
   const [query, setQuery] = useState('');
   const [ownership, setOwnership] = useState<OwnershipFilter>('all');
   const [language, setLanguage] = useState<LanguageFilter>('all');
@@ -252,6 +311,9 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
+        <div className="lock-control">
+          <EditLockControl lock={editLock} />
+        </div>
         <h1>
           <span className="header-flower" aria-hidden="true">
             ✿
@@ -282,6 +344,9 @@ export default function App() {
             {ownedPrintings} of {totalPrintings} printings collected · {jpOwned} of {jpTotal}{' '}
             Japanese exclusives · synced with Google Sheets
           </p>
+          {editLockConfigured && editLock.locked && (
+            <p className="lock-hint">🔒 Editing is locked — tap the lock icon to unlock.</p>
+          )}
         </div>
 
         <div className="value-stats">
@@ -413,7 +478,13 @@ export default function App() {
             </p>
             <div className="card-grid">
               {section.groups.map((group) => (
-                <CardTile key={group.key} group={group} owned={owned} onToggle={toggle} />
+                <CardTile
+                  key={group.key}
+                  group={group}
+                  owned={owned}
+                  onToggle={toggle}
+                  locked={editLock.locked}
+                />
               ))}
             </div>
           </details>

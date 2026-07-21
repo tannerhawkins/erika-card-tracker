@@ -7,11 +7,74 @@
 /* ── Header & progress ─────────────────────────────────────────────── */
 
 .header {
+  position: relative;
   background: linear-gradient(135deg, var(--surface-tint), var(--surface));
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px 28px;
   margin-bottom: 20px;
+}
+
+.lock-control {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.lock-button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  line-height: 1;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.lock-button:hover {
+  border-color: var(--accent);
+}
+
+.lock-form input {
+  width: 140px;
+  padding: 7px 10px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+}
+
+.lock-form input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.lock-form.shake {
+  animation: lock-shake 300ms ease;
+}
+
+@keyframes lock-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.lock-hint {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 .header h1 {
@@ -455,6 +518,15 @@
   color: var(--accent);
 }
 
+.variant-row.locked {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.variant-row.locked input {
+  cursor: not-allowed;
+}
+
 .empty {
   color: var(--text-secondary);
   text-align: center;
@@ -478,6 +550,12 @@
 
   .header {
     padding: 18px;
+    padding-right: 56px;
+  }
+
+  .lock-control {
+    top: 12px;
+    right: 12px;
   }
 
   .card-grid {

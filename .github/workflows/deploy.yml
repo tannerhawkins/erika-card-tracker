@@ -32,6 +32,7 @@ jobs:
         env:
           VITE_SHEETS_API_URL: ${{ secrets.VITE_SHEETS_API_URL }}
           VITE_SHEETS_API_TOKEN: ${{ secrets.VITE_SHEETS_API_TOKEN }}
+          VITE_EDIT_PASSCODE: ${{ secrets.EDIT_PASSCODE }}
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:

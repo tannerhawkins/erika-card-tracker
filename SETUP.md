@@ -126,6 +126,28 @@ optional pokemontcg.io key); without it the sync just skips itself cleanly.
   commons), not that the sync failed. Those cards keep their TCGPlayer/PriceCharting
   links for manual lookup.
 
+## 8. (Optional) Lock editing behind a passcode
+
+By default anyone who loads the site can tick/untick owned status. If you'd rather keep
+it browsable-but-locked until you enter a passcode (e.g. so a stranger — or your own
+stray tap — can't flip your checkboxes), set one:
+
+1. In GitHub → the **`production`** environment, add an environment secret:
+   - Name: **`EDIT_PASSCODE`**
+   - Value: any passcode you like.
+2. Redeploy (push to `main`, or **Actions → "Deploy to GitHub Pages" → Run workflow**).
+
+Once set, the site loads with an unlock icon (🔒) in the top-right corner of the header.
+Tapping it opens a small passcode field; entering the correct value unlocks editing for
+that browser and is remembered (`localStorage`) until you tap the icon again to re-lock.
+Leave `EDIT_PASSCODE` unset (the default) and the lock is skipped entirely — editing
+stays open, same as before.
+
+**Note:** like every other `VITE_`-prefixed value in this project, this is a **static
+site**, so the passcode ends up inside the shipped JavaScript and is visible to anyone
+who inspects the page. It's a friction/deterrent against casual or accidental edits —
+not real authentication. Don't reuse a passcode you use anywhere sensitive.
+
 ---
 
 ## Local development
@@ -145,6 +167,7 @@ npm run dev
 | Optional write token | `.env.example` → blank | GitHub environment secret `VITE_SHEETS_API_TOKEN` + `SHARED_TOKEN` in `Code.gs` |
 | Deploy-sync admin token | `Code.gs` → `ADMIN_TOKEN = ''` | GitHub environment secret `SHEETS_SYNC_TOKEN` + `ADMIN_TOKEN` in `Code.gs` (also gates the price sync) |
 | JustTCG API key (required for price sync) | — | GitHub environment secret `JUSTTCG_API_KEY` |
+| Edit passcode (optional) | `.env.example` → blank | GitHub environment secret `EDIT_PASSCODE` (injected as `VITE_EDIT_PASSCODE`) |
 
 **No sensitive keys are committed.** The Web App URL and the two tokens all live in
 GitHub secrets / your own Apps Script, never in the repo. The Web App URL is injected at

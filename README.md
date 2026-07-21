@@ -82,7 +82,10 @@ environment secret** (`VITE_SHEETS_API_URL`) on the `production` environment and
 at build. `.env.example` documents it with a dummy placeholder; `.env` is git-ignored.
 The card-list and price syncs additionally use `SHEETS_SYNC_TOKEN` and `JUSTTCG_API_KEY`
 (both real, CI-only secrets — never shipped to the browser; `JUSTTCG_API_KEY` is free at
-[justtcg.com](https://justtcg.com)). No sensitive keys are committed. Because this is a static site,
+[justtcg.com](https://justtcg.com)). An optional `EDIT_PASSCODE` environment secret locks
+owned-status editing behind a passcode (lock icon, top right of the header) until entered
+— see [`SETUP.md`](SETUP.md#8-optional-lock-editing-behind-a-passcode). No sensitive keys
+are committed. Because this is a static site,
 `VITE_SHEETS_API_URL` ends up in the shipped page by design — the Apps Script only
 exposes reading cards, toggling one owned flag, and (gated by the admin token) the two
 sync actions.
