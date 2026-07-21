@@ -294,8 +294,8 @@ export default function App() {
             <span className="value-stat-amount">{currency(costToComplete)}</span>
             {missingPriceGroups > 0 && (
               <span className="value-stat-note">
-                {missingPriceGroups} missing card{missingPriceGroups === 1 ? '' : 's'} have no
-                price data
+                {missingPriceGroups} missing card{missingPriceGroups === 1 ? '' : 's'}{' '}
+                {missingPriceGroups === 1 ? 'has' : 'have'} no price data
               </span>
             )}
           </div>
@@ -406,7 +406,8 @@ export default function App() {
                 <span className="set-value-note">
                   {' '}
                   · {section.missingPriceGroups} missing card
-                  {section.missingPriceGroups === 1 ? '' : 's'} have no price data
+                  {section.missingPriceGroups === 1 ? '' : 's'}{' '}
+                  {section.missingPriceGroups === 1 ? 'has' : 'have'} no price data
                 </span>
               )}
             </p>
