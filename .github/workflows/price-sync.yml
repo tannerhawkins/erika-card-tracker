@@ -25,3 +25,6 @@ jobs:
           SHEETS_SYNC_TOKEN: ${{ secrets.SHEETS_SYNC_TOKEN }}
           JUSTTCG_API_KEY: ${{ secrets.JUSTTCG_API_KEY }}
         run: node scripts/sync-prices.mjs
+
+# Keepalive: GitHub auto-disables scheduled workflows after 60 days of repo
+# inactivity. Any commit to this repo resets that timer.
