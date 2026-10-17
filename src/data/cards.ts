@@ -14,6 +14,7 @@ export const SET_ORDER = [
   'Cosmic Eclipse',
   'Scarlet & Violet — 151',
   'Ascended Heroes',
+  '30th Celebration: Classic Collection',
   'Pokémon VS (Japan)',
   'Dream League (Japan)',
   'Tag All Stars (Japan)',

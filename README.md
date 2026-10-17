@@ -7,7 +7,7 @@ every English release plus the Japanese exclusives.
 
 ## What's tracked
 
-57 cards (104 collectible printings) across:
+58 cards (105 collectible printings) across:
 
 | Set | Year | Cards |
 |---|---|---|
@@ -17,6 +17,7 @@ every English release plus the Japanese exclusives.
 | Cosmic Eclipse | 2019 | 4 (Erika supporter + the Vileplume-GX trio that pictures Erika) |
 | Scarlet & Violet — 151 | 2023 | 3 (Erika's Invitation: regular, Full Art, Special Illustration Rare) |
 | Ascended Heroes | 2026 | 8 (Erika's Oddish→Victreebel line, Vileplume ex, Tangela IR) |
+| 30th Celebration: Classic Collection | 2026 | 1 (Erika's Jigglypuff, Gym Challenge reprint) |
 | Pokémon VS (Japan) | 2001 | 2 (Erika's Bellossom, Erika's Jumpluff) |
 | Dream League (Japan) | 2019 | 3 (Erika's Vileplume-GX: RR, Character SR, Hyper Rare) |
 | Tag All Stars (Japan) | 2019 | 1 (Erika's Hospitality SR) |
@@ -32,7 +33,7 @@ separate "owned" checkbox for each: WOTC cards (Gym Heroes/Challenge) have *1st 
 also carry the two Scarlet & Violet reverse patterns, *Energy Symbol* + *Poké Ball*, and
 Erika's Tangela adds its *Cosmos Holo* promo). Secret rares, full arts, illustration/
 special-illustration rares, ex/GX rainbow, and promos have a single printing. That's
-104 printings across the 57 cards. Each card shows its picture, set, number, rarity, year,
+105 printings across the 58 cards. Each card shows its picture, set, number, rarity, year,
 collector notes, links to TCGPlayer and Bulbapedia/TCG Collector, and — where the pricing
 sync has coverage — a live TCGPlayer market price per printing (see below).
 
